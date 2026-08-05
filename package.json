@@ -1,0 +1,31 @@
+{
+  "name": "criativarts-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "sync:products": "node scripts/sync-products.mjs",
+    "db:types": "supabase gen types typescript --project-id ayvbjpdpskxrzdcvboys --schema public > src/types/database.generated.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1103.0",
+    "@aws-sdk/s3-request-presigner": "^3.1103.0",
+    "@mercadopago/sdk-react": "^1.0.7",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.0",
+    "mercadopago": "^3.2.1",
+    "next": "^15.3.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "sharp": "^0.35.3",
+    "typescript": "^5.8.3"
+  }
+}
