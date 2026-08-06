@@ -2,6 +2,7 @@ import { Payment } from "mercadopago";
 import { createAdminClient, hasSupabaseServiceRole } from "@/lib/supabase/admin";
 import { getMercadoPagoServerClient } from "@/lib/mercadopago/server";
 import { hasMercadoPagoAccessToken } from "@/lib/mercadopago/env";
+import { sendOrderAccessEmailIfNeeded } from "@/lib/resend/send-order-access-email";
 
 export type WebhookHandleResult = {
   ok: boolean;
@@ -179,6 +180,18 @@ export async function handleMercadoPagoWebhook(input: {
   }
 
   const libraryGranted = mpStatus === "approved";
+
+  if (libraryGranted) {
+    // E-mail pós-compra: nunca interrompe o webhook / pagamento.
+    try {
+      const emailResult = await sendOrderAccessEmailIfNeeded(orderId);
+      if (!emailResult.ok && !emailResult.skipped) {
+        console.error("[webhook] access email failed:", emailResult.message);
+      }
+    } catch (emailError) {
+      console.error("[webhook] access email unexpected error:", emailError);
+    }
+  }
 
   return {
     ok: true,

@@ -49,6 +49,8 @@ export {
   processPaymentRequest,
 } from "@/lib/payments/client";
 
+export { sendOrderAccessEmailIfNeeded } from "@/lib/resend/send-order-access-email";
+
 export {
   getR2Client,
   hasR2Env,

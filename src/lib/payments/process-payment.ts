@@ -9,6 +9,7 @@ import {
   getMercadoPagoNotificationUrl,
 } from "@/lib/mercadopago/env";
 import { createClient } from "@/lib/supabase/server";
+import { sendOrderAccessEmailIfNeeded } from "@/lib/resend/send-order-access-email";
 import type { Order } from "@/types/order";
 
 export type ProcessPaymentInput = {
@@ -220,6 +221,16 @@ async function recordPaymentOnOrder(
   }
 
   console.info("[payments] library granted rows:", granted);
+
+  // E-mail pós-compra: nunca interrompe o fluxo de pagamento.
+  try {
+    const emailResult = await sendOrderAccessEmailIfNeeded(orderId);
+    if (!emailResult.ok && !emailResult.skipped) {
+      console.error("[payments] access email failed:", emailResult.message);
+    }
+  } catch (emailError) {
+    console.error("[payments] access email unexpected error:", emailError);
+  }
 }
 
 /**

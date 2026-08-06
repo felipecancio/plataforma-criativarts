@@ -320,6 +320,24 @@ export type Database = {
         };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
       };
+      claim_order_access_email: {
+        Args: { p_order_id: string };
+        Returns: boolean;
+      };
+      mark_order_access_email_sent: {
+        Args: {
+          p_order_id: string;
+          p_resend_id?: string | null;
+        };
+        Returns: undefined;
+      };
+      release_order_access_email_claim: {
+        Args: {
+          p_order_id: string;
+          p_error?: string | null;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       // Representados como text + check no SQL; tipados aqui para o app
