@@ -1595,6 +1595,48 @@ img {
   font-size: 0.8rem;
 }
 
+.checkout-pro-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.checkout-pro-lead,
+.checkout-pro-total {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.checkout-pro-total strong {
+  color: var(--ink);
+}
+
+.checkout-return {
+  max-width: 36rem;
+  padding: 2rem 0 3rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.checkout-return h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2rem);
+}
+
+.checkout-return p {
+  margin: 0;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.checkout-return-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
 .checkout-payment-status {
   display: grid;
   gap: 0.75rem;

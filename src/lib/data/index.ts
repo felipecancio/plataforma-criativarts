@@ -44,9 +44,15 @@ export { prepareCheckoutOrder } from "@/lib/checkout/prepare-order";
 export { createPaymentSession } from "@/lib/payments/create-payment-session";
 export { processPayment } from "@/lib/payments/process-payment";
 export { handleMercadoPagoWebhook } from "@/lib/payments/handle-webhook";
+export { createCheckoutPreference } from "@/lib/payments/create-checkout-preference";
+export {
+  getCheckoutMode,
+  isCheckoutProEnabled,
+} from "@/lib/payments/checkout-mode";
 export {
   createPaymentSessionRequest,
   processPaymentRequest,
+  createCheckoutPreferenceRequest,
 } from "@/lib/payments/client";
 
 export { sendOrderAccessEmailIfNeeded } from "@/lib/resend/send-order-access-email";

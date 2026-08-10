@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
+import { getCheckoutMode } from "@/lib/payments/checkout-mode";
+import { CheckoutProPanel } from "@/components/checkout/CheckoutProPanel";
 import {
   createPaymentSessionRequest,
   type CreatePaymentResponse,
@@ -140,11 +142,13 @@ function PaymentResultPanel({
 }
 
 export function CheckoutPageContent() {
+  const checkoutMode = getCheckoutMode();
+  const isPro = checkoutMode === "pro";
   const { cartProducts, itemCount, clearCart } = useCart();
   const router = useRouter();
   const [session, setSession] = useState<SessionSuccess | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingSession, setLoadingSession] = useState(!isPro);
   const [paymentResult, setPaymentResult] = useState<ProcessPaymentResponse | null>(
     null
   );
@@ -152,12 +156,17 @@ export function CheckoutPageContent() {
   const clearedRef = useRef(false);
 
   useEffect(() => {
-    if (itemCount === 0 && !paymentResult) {
+    if (itemCount === 0 && !paymentResult && !isPro) {
       router.replace("/carrinho");
     }
-  }, [itemCount, paymentResult, router]);
+    if (itemCount === 0 && isPro) {
+      router.replace("/carrinho");
+    }
+  }, [itemCount, paymentResult, router, isPro]);
 
+  // Brick: cria sessão de pedido no mount (comportamento original).
   useEffect(() => {
+    if (isPro) return;
     if (itemCount === 0 || startedRef.current) return;
     startedRef.current = true;
 
@@ -205,7 +214,7 @@ export function CheckoutPageContent() {
     }
 
     void startSession();
-  }, [cartProducts, itemCount, router]);
+  }, [cartProducts, itemCount, router, isPro]);
 
   useEffect(() => {
     if (
@@ -243,8 +252,11 @@ export function CheckoutPageContent() {
     );
   }
 
-  const displayTotal = session?.amount ?? 0;
-  const brickVisible = Boolean(session) && !loadingSession && !paymentResult;
+  const cartTotal = cartProducts.reduce((sum, p) => sum + p.price, 0);
+  const displayTotal = isPro ? cartTotal : (session?.amount ?? 0);
+  const brickVisible =
+    !isPro && Boolean(session) && !loadingSession && !paymentResult;
+  const productIds = cartProducts.map((p) => p.id);
 
   return (
     <div className="checkout-page">
@@ -259,20 +271,31 @@ export function CheckoutPageContent() {
 
         <div className="checkout-page-head">
           <h1>Pagamento</h1>
-          <p>Finalize com o checkout seguro do Mercado Pago.</p>
+          <p>
+            {isPro
+              ? "Finalize com o Checkout Pro do Mercado Pago."
+              : "Finalize com o checkout seguro do Mercado Pago."}
+          </p>
         </div>
 
         <div className="checkout-layout">
           <div className="checkout-payment-panel">
             <h2>Forma de pagamento</h2>
 
-            {loadingSession && (
+            {isPro && (
+              <CheckoutProPanel
+                productIds={productIds}
+                displayTotal={displayTotal}
+              />
+            )}
+
+            {!isPro && loadingSession && (
               <div className="checkout-brick-loading" aria-busy="true">
                 Preparando pedido seguro…
               </div>
             )}
 
-            {!loadingSession && sessionError && (
+            {!isPro && !loadingSession && sessionError && (
               <div className="checkout-brick-fallback" role="alert">
                 <p className="checkout-brick-fallback-title">
                   Não foi possível iniciar o pagamento
@@ -284,7 +307,7 @@ export function CheckoutPageContent() {
               </div>
             )}
 
-            {paymentResult && (
+            {!isPro && paymentResult && (
               <PaymentResultPanel result={paymentResult} onRetry={handleRetry} />
             )}
 
@@ -303,7 +326,7 @@ export function CheckoutPageContent() {
             <h2>Resumo do pedido</h2>
             <ul className="checkout-summary-list">
               {(
-                session?.items ??
+                (!isPro ? session?.items : null) ??
                 cartProducts.map((p) => ({
                   productId: p.id,
                   name: p.name,
@@ -333,17 +356,22 @@ export function CheckoutPageContent() {
             </ul>
             <div className="checkout-summary-total">
               <span>Total</span>
-              <strong>{session ? formatPrice(displayTotal) : "—"}</strong>
+              <strong>
+                {isPro || session ? formatPrice(displayTotal) : "—"}
+              </strong>
             </div>
             <p className="checkout-summary-note">
-              Valores confirmados no servidor. Pagamentos de teste via Mercado
-              Pago Checkout Bricks.
+              Valores confirmados no servidor
+              {isPro
+                ? " ao criar a Preference."
+                : ". Pagamentos via Mercado Pago Checkout Bricks."}
             </p>
-            {!(paymentResult?.ok && paymentResult.status === "approved") && (
-              <Link href="/carrinho" className="btn btn-secondary btn-block">
-                Voltar ao carrinho
-              </Link>
-            )}
+            {!isPro &&
+              !(paymentResult?.ok && paymentResult.status === "approved") && (
+                <Link href="/carrinho" className="btn btn-secondary btn-block">
+                  Voltar ao carrinho
+                </Link>
+              )}
           </aside>
         </div>
       </div>

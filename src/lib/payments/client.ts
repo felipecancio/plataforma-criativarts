@@ -88,3 +88,40 @@ export async function processPaymentRequest(input: {
   const payload = (await response.json()) as ProcessPaymentResponse;
   return payload;
 }
+
+export type CreatePreferenceResponse =
+  | {
+      ok: true;
+      orderId: string;
+      preferenceId: string;
+      amount: number;
+      currency: string;
+      externalReference: string;
+      initPoint: string;
+      items: Array<{
+        productId: string;
+        name: string;
+        slug: string;
+        unitPrice: number;
+        quantity: number;
+      }>;
+    }
+  | {
+      ok: false;
+      code: string;
+      message: string;
+    };
+
+/** Checkout Pro — cria Preference e devolve init_point (redirect MP). */
+export async function createCheckoutPreferenceRequest(
+  productIds: string[]
+): Promise<CreatePreferenceResponse> {
+  const response = await fetch("/api/payments/preference", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productIds }),
+  });
+
+  const payload = (await response.json()) as CreatePreferenceResponse;
+  return payload;
+}
