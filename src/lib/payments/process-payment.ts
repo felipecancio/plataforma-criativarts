@@ -17,6 +17,8 @@ export type ProcessPaymentInput = {
   formData: Record<string, unknown>;
   selectedPaymentMethod?: string | null;
   idempotencyKey?: string | null;
+  /** Device ID → X-Meli-Session-Id (opcional; ausência não bloqueia) */
+  meliSessionId?: string | null;
 };
 
 export type PaymentUiStatus =
@@ -64,6 +66,20 @@ function mapMpStatus(status: string | undefined): PaymentUiStatus {
   if (status === "rejected" || status === "cancelled") return "rejected";
   if (status === "in_process") return "in_process";
   return "pending";
+}
+
+/**
+ * Normaliza Device ID / meliSessionId do client.
+ * Ausência ou formato inválido → null (pagamento segue sem o header).
+ */
+function normalizeMeliSessionId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  // Limite defensivo — não usar como fonte de confiança de negócio.
+  if (trimmed.length < 8 || trimmed.length > 256) return null;
+  if (!/^[a-zA-Z0-9._:-]+$/.test(trimmed)) return null;
+  return trimmed;
 }
 
 function buildPaymentBody(
@@ -340,12 +356,20 @@ export async function processPayment(
     (typeof input.idempotencyKey === "string" && input.idempotencyKey.trim()) ||
     randomUUID();
 
+  const meliSessionId = normalizeMeliSessionId(input.meliSessionId);
+  if (!meliSessionId) {
+    console.warn("[payments] meliSessionId present: false");
+  }
+
   try {
     const client = getMercadoPagoServerClient();
     const paymentClient = new Payment(client);
     const payment = await paymentClient.create({
       body,
-      requestOptions: { idempotencyKey },
+      requestOptions: {
+        idempotencyKey,
+        ...(meliSessionId ? { meliSessionId } : {}),
+      },
     });
 
     await recordPaymentOnOrder(order.id, payment, productIds);

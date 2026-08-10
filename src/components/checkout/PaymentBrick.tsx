@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Payment } from "@mercadopago/sdk-react";
 import {
   ensureMercadoPagoBrowserSdk,
+  ensureMercadoPagoSecurityScript,
+  getMercadoPagoDeviceSessionId,
   hasMercadoPagoPublicKey,
 } from "@/lib/mercadopago";
 import {
@@ -52,6 +54,8 @@ export function PaymentBrick({
         );
         return;
       }
+      // Device ID oficial (security.js → MP_DEVICE_SESSION_ID) para antifraude.
+      ensureMercadoPagoSecurityScript();
       setReadySdk(true);
     } catch (error) {
       setFatalError(
@@ -150,11 +154,17 @@ export function PaymentBrick({
             setPhase("processing");
 
             try {
+              const meliSessionId = getMercadoPagoDeviceSessionId();
+              if (!meliSessionId) {
+                console.warn("[MercadoPago] meliSessionId present: false");
+              }
+
               const result = await processPaymentRequest({
                 orderId,
                 formData: formData as unknown as Record<string, unknown>,
                 selectedPaymentMethod,
                 idempotencyKey: crypto.randomUUID(),
+                ...(meliSessionId ? { meliSessionId } : {}),
               });
 
               onResult?.(result);

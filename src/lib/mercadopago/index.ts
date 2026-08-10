@@ -12,4 +12,8 @@ export {
   getMercadoPagoNotificationUrl,
 } from "@/lib/mercadopago/env";
 
-export { ensureMercadoPagoBrowserSdk } from "@/lib/mercadopago/browser";
+export {
+  ensureMercadoPagoBrowserSdk,
+  ensureMercadoPagoSecurityScript,
+  getMercadoPagoDeviceSessionId,
+} from "@/lib/mercadopago/browser";

@@ -6,6 +6,7 @@ type ProcessPaymentBody = {
   formData?: unknown;
   selectedPaymentMethod?: unknown;
   idempotencyKey?: unknown;
+  meliSessionId?: unknown;
 };
 
 /**
@@ -63,6 +64,8 @@ export async function POST(request: Request) {
           : null,
       idempotencyKey:
         typeof body.idempotencyKey === "string" ? body.idempotencyKey : null,
+      meliSessionId:
+        typeof body.meliSessionId === "string" ? body.meliSessionId : null,
     });
 
     if (!result.ok) {

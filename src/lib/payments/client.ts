@@ -70,6 +70,8 @@ export async function processPaymentRequest(input: {
   formData: Record<string, unknown>;
   selectedPaymentMethod?: string | null;
   idempotencyKey?: string;
+  /** Device ID / sessão MP → requestOptions.meliSessionId no Payment.create */
+  meliSessionId?: string;
 }): Promise<ProcessPaymentResponse> {
   const response = await fetch("/api/payments/process", {
     method: "POST",
@@ -79,6 +81,7 @@ export async function processPaymentRequest(input: {
       formData: input.formData,
       selectedPaymentMethod: input.selectedPaymentMethod ?? null,
       idempotencyKey: input.idempotencyKey ?? crypto.randomUUID(),
+      ...(input.meliSessionId ? { meliSessionId: input.meliSessionId } : {}),
     }),
   });
 
