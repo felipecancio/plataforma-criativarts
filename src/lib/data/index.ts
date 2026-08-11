@@ -31,7 +31,9 @@ export {
   getCurrentUserOrders,
   getOrderById,
   createPendingOrder,
+  createGuestPendingOrder,
   attachPaymentReferences,
+  attachPaymentReferencesAdmin,
 } from "@/lib/orders/queries";
 
 export {

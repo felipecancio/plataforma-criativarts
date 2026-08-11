@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  createAdminClient,
+  hasSupabaseServiceRole,
+} from "@/lib/supabase/admin";
 import { mapOrderRow, mapOrderWithItems, toOrderMetadata } from "@/lib/orders/mappers";
 import type { TablesInsert } from "@/types/database";
 import type { Order, OrderWithItems } from "@/types/order";
@@ -67,6 +71,12 @@ export type CreatePendingOrderInput = {
   paymentProvider?: string | null;
 };
 
+export type CreateGuestPendingOrderInput = {
+  products: Product[];
+  metadata?: Record<string, unknown>;
+  paymentProvider?: string | null;
+};
+
 /**
  * Cria pedido `pending` + itens (snapshot).
  * Pronto para o fluxo futuro do Mercado Pago — não altera status nem biblioteca.
@@ -129,6 +139,75 @@ export async function createPendingOrder(
 }
 
 /**
+ * Pedido guest (user_id NULL) via service role — só para Checkout Pro.
+ * Não usa INSERT anônimo; backend valida produtos/preços antes.
+ */
+export async function createGuestPendingOrder(
+  input: CreateGuestPendingOrderInput
+): Promise<Order | null> {
+  if (input.products.length === 0) return null;
+  if (!hasSupabaseServiceRole()) {
+    console.error("[orders] Service role required for guest order.");
+    return null;
+  }
+
+  const admin = createAdminClient();
+  const subtotal = input.products.reduce((sum, product) => sum + product.price, 0);
+  const total = subtotal;
+
+  const orderInsert: TablesInsert<"orders"> = {
+    user_id: null,
+    status: "pending",
+    currency: "BRL",
+    subtotal,
+    total,
+    customer_email: null,
+    payment_provider: input.paymentProvider ?? null,
+    metadata: toOrderMetadata({
+      ...(input.metadata ?? {}),
+      guest: true,
+    }),
+  };
+
+  const { data: orderRow, error: orderError } = await admin
+    .from("orders")
+    .insert(orderInsert)
+    .select(ORDER_COLUMNS)
+    .single();
+
+  if (orderError || !orderRow) {
+    console.warn("[orders] Failed to create guest order:", orderError?.message);
+    return null;
+  }
+
+  const order = mapOrderRow(orderRow);
+
+  const itemsPayload: TablesInsert<"order_items">[] = input.products.map(
+    (product) => ({
+      order_id: order.id,
+      product_id: product.id,
+      product_name: product.name,
+      product_slug: product.slug,
+      unit_price: product.price,
+      quantity: 1,
+      line_total: product.price,
+    })
+  );
+
+  const { error: itemsError } = await admin.from("order_items").insert(itemsPayload);
+
+  if (itemsError) {
+    console.error(
+      "[orders] Failed to create guest order items:",
+      itemsError.message
+    );
+    return null;
+  }
+
+  return order;
+}
+
+/**
  * Atualiza campos de pagamento do pedido (uso futuro: Preference / webhook MP).
  * Em produção, preferir service role no webhook; aqui fica tipado para o server.
  */
@@ -161,6 +240,40 @@ export async function attachPaymentReferences(
 
   if (error || !data) {
     console.warn("[orders] Failed to attach payment refs:", error?.message);
+    return null;
+  }
+
+  return mapOrderRow(data);
+}
+
+/** Preferência / refs para pedido guest (service role). */
+export async function attachPaymentReferencesAdmin(
+  orderId: string,
+  refs: {
+    preferenceId?: string | null;
+    paymentId?: string | null;
+    paymentProvider?: string | null;
+  }
+): Promise<Order | null> {
+  if (!hasSupabaseServiceRole()) return null;
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("orders")
+    .update({
+      preference_id: refs.preferenceId ?? undefined,
+      payment_id: refs.paymentId ?? undefined,
+      payment_provider: refs.paymentProvider ?? undefined,
+    })
+    .eq("id", orderId)
+    .select(ORDER_COLUMNS)
+    .single();
+
+  if (error || !data) {
+    console.warn(
+      "[orders] Failed to attach payment refs (admin):",
+      error?.message
+    );
     return null;
   }
 

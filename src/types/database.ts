@@ -109,7 +109,7 @@ export type Database = {
       orders: {
         Row: {
           id: string;
-          user_id: string;
+          user_id: string | null;
           status: Database["public"]["Enums"]["order_status"];
           currency: string;
           subtotal: number;
@@ -125,7 +125,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id: string;
+          user_id?: string | null;
           status?: Database["public"]["Enums"]["order_status"];
           currency?: string;
           subtotal: number;
@@ -141,7 +141,7 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          user_id?: string | null;
           status?: Database["public"]["Enums"]["order_status"];
           currency?: string;
           subtotal?: number;
@@ -317,6 +317,20 @@ export type Database = {
           p_payment_id: string;
           p_mp_status: string;
           p_mp_status_detail?: string | null;
+          p_customer_email?: string | null;
+          p_link_user_id?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["orders"]["Row"];
+      };
+      find_user_id_by_email: {
+        Args: { p_email: string };
+        Returns: string;
+      };
+      claim_paid_guest_order: {
+        Args: {
+          p_order_id: string;
+          p_token_hash: string;
+          p_user_id: string;
         };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
       };

@@ -52,7 +52,8 @@ export async function POST(request: Request) {
           : result.code === "mp_not_configured" ||
               result.code === "order_failed" ||
               result.code === "app_url_missing" ||
-              result.code === "preference_failed"
+              result.code === "preference_failed" ||
+              result.code === "service_role_missing"
             ? 503
             : 400;
 

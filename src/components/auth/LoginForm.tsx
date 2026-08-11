@@ -102,6 +102,8 @@ export function LoginForm() {
 
       <p className="auth-switch">
         Ainda não tem conta? <Link href="/cadastro">Criar conta</Link>
+        <br />
+        Já comprou sem conta? <Link href="/ja-comprei">Recuperar acesso</Link>
       </p>
     </form>
   );

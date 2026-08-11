@@ -110,14 +110,16 @@ export async function sendOrderAccessEmailIfNeeded(
       };
     }
 
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("name")
-      .eq("id", order.user_id)
-      .maybeSingle();
+    const { data: profile } = order.user_id
+      ? await admin
+          .from("profiles")
+          .select("name")
+          .eq("id", order.user_id)
+          .maybeSingle()
+      : { data: null };
 
     let customerEmail = order.customer_email?.trim() || "";
-    if (!customerEmail) {
+    if (!customerEmail && order.user_id) {
       const { data: authData, error: authError } =
         await admin.auth.admin.getUserById(order.user_id);
       if (authError) {
@@ -132,6 +134,16 @@ export async function sendOrderAccessEmailIfNeeded(
       return {
         ok: false,
         message: "E-mail do cliente ausente.",
+      };
+    }
+
+    // Pedido guest pago sem user: não envia e-mail de biblioteca aqui.
+    if (!order.user_id) {
+      await releaseClaim(admin, orderId, "guest order — use claim email");
+      return {
+        ok: true,
+        skipped: true,
+        message: "Pedido guest — e-mail de claim é enviado à parte.",
       };
     }
 

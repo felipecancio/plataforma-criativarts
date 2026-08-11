@@ -8,7 +8,6 @@ export const metadata: Metadata = {
 
 /**
  * Retorno Checkout Pro (sucesso). Não libera acesso — só UX.
- * A liberação ocorre via webhook após confirmação real do pagamento.
  */
 export default function CheckoutSucessoPage() {
   return (
@@ -20,15 +19,20 @@ export default function CheckoutSucessoPage() {
           no servidor — isso pode levar alguns instantes.
         </p>
         <p>
-          Assim que o pagamento for aprovado, os packs entram na sua biblioteca
-          automaticamente e você recebe um e-mail de acesso.
+          Se o pagamento for aprovado e você ainda não tiver conta, enviaremos
+          um e-mail para <strong>criar seu acesso</strong> (apenas uma senha).
+          Se já tiver conta com o mesmo e-mail, o material entra na biblioteca
+          automaticamente.
         </p>
         <div className="checkout-return-actions">
           <Link href="/biblioteca" className="btn btn-primary">
             Ir para a biblioteca
           </Link>
-          <Link href="/" className="btn btn-secondary">
-            Voltar ao início
+          <Link href="/ja-comprei" className="btn btn-secondary">
+            Já fiz uma compra
+          </Link>
+          <Link href="/criar-acesso" className="btn btn-secondary">
+            Criar meu acesso
           </Link>
         </div>
       </div>

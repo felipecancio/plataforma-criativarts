@@ -3,6 +3,8 @@ import { createAdminClient, hasSupabaseServiceRole } from "@/lib/supabase/admin"
 import { getMercadoPagoServerClient } from "@/lib/mercadopago/server";
 import { hasMercadoPagoAccessToken } from "@/lib/mercadopago/env";
 import { sendOrderAccessEmailIfNeeded } from "@/lib/resend/send-order-access-email";
+import { sendOrderClaimEmailIfNeeded } from "@/lib/resend/send-order-claim-email";
+import { findUserIdByEmail } from "@/lib/orders/claim";
 
 export type WebhookHandleResult = {
   ok: boolean;
@@ -68,10 +70,17 @@ function amountsMatch(expected: number, received: number | undefined): boolean {
   return Math.abs(Number(expected) - Number(received)) < 0.01;
 }
 
+function extractPayerEmail(payment: {
+  payer?: { email?: string | null } | null;
+}): string | null {
+  const email = payment.payer?.email?.trim();
+  return email || null;
+}
+
 /**
  * Processa notificação do Mercado Pago:
  * busca o pagamento oficial → valida pedido/valor → finaliza no banco.
- * Só libera biblioteca quando status = approved.
+ * Guest: paid sem user_id; conta existente é vinculada; library só com user.
  */
 export async function handleMercadoPagoWebhook(input: {
   searchParams: URLSearchParams;
@@ -124,7 +133,7 @@ export async function handleMercadoPagoWebhook(input: {
   const admin = createAdminClient();
   const { data: orderRow, error: orderError } = await admin
     .from("orders")
-    .select("id, user_id, status, total, payment_id")
+    .select("id, user_id, status, total, payment_id, customer_email")
     .eq("id", orderId)
     .maybeSingle();
 
@@ -158,13 +167,22 @@ export async function handleMercadoPagoWebhook(input: {
     };
   }
 
-  const { error: finalizeError } = await admin.rpc(
+  const payerEmail = extractPayerEmail(payment);
+  let linkUserId: string | null = null;
+
+  if (mpStatus === "approved" && !orderRow.user_id && payerEmail) {
+    linkUserId = await findUserIdByEmail(payerEmail);
+  }
+
+  const { data: finalized, error: finalizeError } = await admin.rpc(
     "finalize_order_from_mercadopago",
     {
       p_order_id: orderId,
       p_payment_id: String(payment.id ?? paymentId),
       p_mp_status: mpStatus,
       p_mp_status_detail: payment.status_detail ?? null,
+      p_customer_email: payerEmail,
+      p_link_user_id: linkUserId,
     }
   );
 
@@ -179,17 +197,30 @@ export async function handleMercadoPagoWebhook(input: {
     };
   }
 
-  const libraryGranted = mpStatus === "approved";
+  const paid = mpStatus === "approved";
+  const finalUserId =
+    (finalized && typeof finalized === "object" && "user_id" in finalized
+      ? (finalized as { user_id: string | null }).user_id
+      : null) ??
+    linkUserId ??
+    orderRow.user_id;
+  const libraryGranted = Boolean(paid && finalUserId);
 
-  if (libraryGranted) {
-    // E-mail pós-compra: nunca interrompe o webhook / pagamento.
+  if (paid) {
     try {
-      const emailResult = await sendOrderAccessEmailIfNeeded(orderId);
-      if (!emailResult.ok && !emailResult.skipped) {
-        console.error("[webhook] access email failed:", emailResult.message);
+      if (finalUserId) {
+        const emailResult = await sendOrderAccessEmailIfNeeded(orderId);
+        if (!emailResult.ok && !emailResult.skipped) {
+          console.error("[webhook] access email failed:", emailResult.message);
+        }
+      } else {
+        const claimResult = await sendOrderClaimEmailIfNeeded(orderId);
+        if (!claimResult.ok && !claimResult.skipped) {
+          console.error("[webhook] claim email failed:", claimResult.message);
+        }
       }
     } catch (emailError) {
-      console.error("[webhook] access email unexpected error:", emailError);
+      console.error("[webhook] post-paid email unexpected error:", emailError);
     }
   }
 
@@ -199,8 +230,10 @@ export async function handleMercadoPagoWebhook(input: {
     orderId,
     mpStatus,
     libraryGranted,
-    message: libraryGranted
-      ? "Pagamento aprovado — pedido pago e biblioteca liberada."
+    message: paid
+      ? libraryGranted
+        ? "Pagamento aprovado — pedido pago e biblioteca liberada."
+        : "Pagamento aprovado — pedido pago; aguardando criação de acesso."
       : `Pagamento ${mpStatus} — biblioteca não liberada.`,
   };
 }

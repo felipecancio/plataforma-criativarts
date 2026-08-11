@@ -25,7 +25,7 @@ export const LIBRARY_STATUSES = [
 
 export type Order = {
   id: string;
-  userId: string;
+  userId: string | null;
   status: OrderStatus;
   currency: string;
   subtotal: number;
