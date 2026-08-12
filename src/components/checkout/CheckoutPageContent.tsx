@@ -7,8 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
-import { getCheckoutMode } from "@/lib/payments/checkout-mode";
+import { getCheckoutMode, isHostedCheckoutMode } from "@/lib/payments/checkout-mode";
 import { CheckoutProPanel } from "@/components/checkout/CheckoutProPanel";
+import { CheckoutAsaasPanel } from "@/components/checkout/CheckoutAsaasPanel";
 import {
   createPaymentSessionRequest,
   type CreatePaymentResponse,
@@ -144,11 +145,13 @@ function PaymentResultPanel({
 export function CheckoutPageContent() {
   const checkoutMode = getCheckoutMode();
   const isPro = checkoutMode === "pro";
+  const isAsaas = checkoutMode === "asaas";
+  const isHosted = isHostedCheckoutMode();
   const { cartProducts, itemCount, clearCart } = useCart();
   const router = useRouter();
   const [session, setSession] = useState<SessionSuccess | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
-  const [loadingSession, setLoadingSession] = useState(!isPro);
+  const [loadingSession, setLoadingSession] = useState(!isHosted);
   const [paymentResult, setPaymentResult] = useState<ProcessPaymentResponse | null>(
     null
   );
@@ -156,17 +159,17 @@ export function CheckoutPageContent() {
   const clearedRef = useRef(false);
 
   useEffect(() => {
-    if (itemCount === 0 && !paymentResult && !isPro) {
+    if (itemCount === 0 && !paymentResult && !isHosted) {
       router.replace("/carrinho");
     }
-    if (itemCount === 0 && isPro) {
+    if (itemCount === 0 && isHosted) {
       router.replace("/carrinho");
     }
-  }, [itemCount, paymentResult, router, isPro]);
+  }, [itemCount, paymentResult, router, isHosted]);
 
   // Brick: cria sessão de pedido no mount (comportamento original).
   useEffect(() => {
-    if (isPro) return;
+    if (isHosted) return;
     if (itemCount === 0 || startedRef.current) return;
     startedRef.current = true;
 
@@ -214,7 +217,7 @@ export function CheckoutPageContent() {
     }
 
     void startSession();
-  }, [cartProducts, itemCount, router, isPro]);
+  }, [cartProducts, itemCount, router, isHosted]);
 
   useEffect(() => {
     if (
@@ -253,10 +256,17 @@ export function CheckoutPageContent() {
   }
 
   const cartTotal = cartProducts.reduce((sum, p) => sum + p.price, 0);
-  const displayTotal = isPro ? cartTotal : (session?.amount ?? 0);
+  const displayTotal = isHosted ? cartTotal : (session?.amount ?? 0);
   const brickVisible =
-    !isPro && Boolean(session) && !loadingSession && !paymentResult;
+    !isHosted && Boolean(session) && !loadingSession && !paymentResult;
   const productIds = cartProducts.map((p) => p.id);
+
+  const headCopy =
+    checkoutMode === "asaas"
+      ? "Finalize com Pix ou cartão pelo checkout Asaas."
+      : checkoutMode === "pro"
+        ? "Finalize com o Checkout Pro do Mercado Pago."
+        : "Finalize com o checkout seguro do Mercado Pago.";
 
   return (
     <div className="checkout-page">
@@ -271,11 +281,7 @@ export function CheckoutPageContent() {
 
         <div className="checkout-page-head">
           <h1>Pagamento</h1>
-          <p>
-            {isPro
-              ? "Finalize com o Checkout Pro do Mercado Pago."
-              : "Finalize com o checkout seguro do Mercado Pago."}
-          </p>
+          <p>{headCopy}</p>
         </div>
 
         <div className="checkout-layout">
@@ -289,13 +295,20 @@ export function CheckoutPageContent() {
               />
             )}
 
-            {!isPro && loadingSession && (
+            {isAsaas && (
+              <CheckoutAsaasPanel
+                productIds={productIds}
+                displayTotal={displayTotal}
+              />
+            )}
+
+            {!isHosted && loadingSession && (
               <div className="checkout-brick-loading" aria-busy="true">
                 Preparando pedido seguro…
               </div>
             )}
 
-            {!isPro && !loadingSession && sessionError && (
+            {!isHosted && !loadingSession && sessionError && (
               <div className="checkout-brick-fallback" role="alert">
                 <p className="checkout-brick-fallback-title">
                   Não foi possível iniciar o pagamento
@@ -307,7 +320,7 @@ export function CheckoutPageContent() {
               </div>
             )}
 
-            {!isPro && paymentResult && (
+            {!isHosted && paymentResult && (
               <PaymentResultPanel result={paymentResult} onRetry={handleRetry} />
             )}
 
@@ -326,7 +339,7 @@ export function CheckoutPageContent() {
             <h2>Resumo do pedido</h2>
             <ul className="checkout-summary-list">
               {(
-                (!isPro ? session?.items : null) ??
+                (!isHosted ? session?.items : null) ??
                 cartProducts.map((p) => ({
                   productId: p.id,
                   name: p.name,
@@ -357,16 +370,18 @@ export function CheckoutPageContent() {
             <div className="checkout-summary-total">
               <span>Total</span>
               <strong>
-                {isPro || session ? formatPrice(displayTotal) : "—"}
+                {isHosted || session ? formatPrice(displayTotal) : "—"}
               </strong>
             </div>
             <p className="checkout-summary-note">
               Valores confirmados no servidor
-              {isPro
-                ? " ao criar a Preference."
-                : ". Pagamentos via Mercado Pago Checkout Bricks."}
+              {checkoutMode === "asaas"
+                ? " ao criar o checkout Asaas."
+                : checkoutMode === "pro"
+                  ? " ao criar a Preference."
+                  : ". Pagamentos via Mercado Pago Checkout Bricks."}
             </p>
-            {!isPro &&
+            {!isHosted &&
               !(paymentResult?.ok && paymentResult.status === "approved") && (
                 <Link href="/carrinho" className="btn btn-secondary btn-block">
                   Voltar ao carrinho

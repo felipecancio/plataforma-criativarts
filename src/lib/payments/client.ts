@@ -125,3 +125,40 @@ export async function createCheckoutPreferenceRequest(
   const payload = (await response.json()) as CreatePreferenceResponse;
   return payload;
 }
+
+export type CreateAsaasCheckoutResponse =
+  | {
+      ok: true;
+      orderId: string;
+      checkoutId: string;
+      amount: number;
+      currency: string;
+      externalReference: string;
+      checkoutUrl: string;
+      items: Array<{
+        productId: string;
+        name: string;
+        slug: string;
+        unitPrice: number;
+        quantity: number;
+      }>;
+    }
+  | {
+      ok: false;
+      code: string;
+      message: string;
+    };
+
+/** Asaas Checkout — cria sessão e devolve URL hospedada (Pix + cartão). */
+export async function createAsaasCheckoutRequest(
+  productIds: string[]
+): Promise<CreateAsaasCheckoutResponse> {
+  const response = await fetch("/api/payments/asaas/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productIds }),
+  });
+
+  const payload = (await response.json()) as CreateAsaasCheckoutResponse;
+  return payload;
+}
