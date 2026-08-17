@@ -37,6 +37,7 @@ export function LibraryGrid({ items }: { items: UserLibraryProduct[] }) {
             key={entry.id}
             product={entry.product}
             owned
+            hidePrice
           />
         ))}
       </div>

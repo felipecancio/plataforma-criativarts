@@ -6,6 +6,9 @@
  * - Sandbox:  https://api-sandbox.asaas.com/v3
  *
  * Defina ASAAS_ENV=sandbox|production (default: production se a key não indicar sandbox).
+ *
+ * Chaves Asaas começam com `$`. No `.env.local`, escape: ASAAS_API_KEY=\$aact_...
+ * (o Next faz expand de `$VAR` e esvazia a chave se não escapar). Na Vercel, cole sem `\`.
  */
 
 export type AsaasEnv = "sandbox" | "production";

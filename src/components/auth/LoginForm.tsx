@@ -101,7 +101,10 @@ export function LoginForm() {
       </button>
 
       <p className="auth-switch">
-        Ainda não tem conta? <Link href="/cadastro">Criar conta</Link>
+        Ainda não tem conta?{" "}
+        <Link href={`/cadastro?next=${encodeURIComponent(next)}`}>
+          Criar conta
+        </Link>
         <br />
         Já comprou sem conta? <Link href="/ja-comprei">Recuperar acesso</Link>
       </p>

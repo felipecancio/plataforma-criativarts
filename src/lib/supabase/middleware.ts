@@ -45,10 +45,13 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (!user && isProtectedRoute(pathname)) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/entrar";
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    const authUrl = request.nextUrl.clone();
+    // Biblioteca: prioriza criar conta (fluxo pós-compra); demais rotas → login.
+    authUrl.pathname = pathname.startsWith("/biblioteca")
+      ? "/cadastro"
+      : "/entrar";
+    authUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(authUrl);
   }
 
   if (user && isAuthRoute(pathname)) {

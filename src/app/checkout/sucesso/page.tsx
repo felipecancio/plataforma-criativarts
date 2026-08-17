@@ -2,37 +2,29 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Pagamento em processamento | Criativarts",
-  description: "Estamos confirmando seu pagamento com o Mercado Pago.",
+  title: "Pagamento confirmado | Criativarts",
+  description: "Seu pagamento foi confirmado. Acesse seu material na biblioteca.",
 };
 
 /**
- * Retorno Checkout Pro (sucesso). Não libera acesso — só UX.
+ * Retorno do checkout hospedado (Asaas / Pro).
+ * Não libera acesso aqui — confirmação vem do webhook; CTA leva à biblioteca.
  */
 export default function CheckoutSucessoPage() {
   return (
     <div className="checkout-page">
       <div className="container checkout-return">
-        <h1>Pagamento recebido</h1>
+        <h1>Pagamento confirmado</h1>
         <p>
-          Recebemos o retorno do Mercado Pago. Estamos confirmando o pagamento
-          no servidor — isso pode levar alguns instantes.
+          Seu pagamento foi confirmado e seu produto já está disponível!
         </p>
         <p>
-          Se o pagamento for aprovado e você ainda não tiver conta, enviaremos
-          um e-mail para <strong>criar seu acesso</strong> (apenas uma senha).
-          Se já tiver conta com o mesmo e-mail, o material entra na biblioteca
-          automaticamente.
+          Basta clicar no botão abaixo e fazer login (ou criar sua conta) pra
+          acessar:
         </p>
         <div className="checkout-return-actions">
           <Link href="/biblioteca" className="btn btn-primary">
-            Ir para a biblioteca
-          </Link>
-          <Link href="/ja-comprei" className="btn btn-secondary">
-            Já fiz uma compra
-          </Link>
-          <Link href="/criar-acesso" className="btn btn-secondary">
-            Criar meu acesso
+            Acessar Material
           </Link>
         </div>
       </div>

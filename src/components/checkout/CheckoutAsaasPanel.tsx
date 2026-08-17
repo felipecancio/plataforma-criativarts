@@ -56,8 +56,8 @@ export function CheckoutAsaasPanel({
   return (
     <div className="checkout-pro-panel">
       <p className="checkout-pro-lead">
-        Você será redirecionado ao Asaas para pagar com Pix ou cartão. O acesso
-        aos packs só é liberado após a confirmação do pagamento.
+        Nós usamos o checkout seguro do Asaas.com. Basta concluir sua compra no
+        botão abaixo que o envio do seu acesso é imediato.
       </p>
 
       <p className="checkout-pro-total">
@@ -73,16 +73,16 @@ export function CheckoutAsaasPanel({
 
       <button
         type="button"
-        className="btn btn-primary btn-block"
+        className="btn btn-pay btn-block"
         onClick={() => void handlePay()}
         disabled={loading || productIds.length === 0}
       >
-        {loading ? "Abrindo Asaas…" : "Pagar com Pix ou cartão"}
+        {loading ? "Abrindo pagamento…" : "Realizar Pagamento"}
       </button>
 
       <p className="checkout-summary-note">
-        Ao continuar, um pedido é criado no servidor com o valor oficial dos
-        produtos. A confirmação final vem pelo webhook do Asaas.
+        Nenhum de seus dados fica armazenado em nosso sitema. Apenas recebemos
+        as confirmações de compra. Suas informações estão 100% protegidas.
       </p>
 
       <Link href="/carrinho" className="btn btn-secondary btn-block">

@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { DEFAULT_AUTHENTICATED_REDIRECT } from "@/lib/auth/config";
+import {
+  DEFAULT_AUTHENTICATED_REDIRECT,
+  safeRedirectPath,
+} from "@/lib/auth/config";
 import {
   AUTH_MESSAGES,
   isDuplicateSignUpUser,
@@ -14,6 +17,13 @@ import {
 
 export function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeRedirectPath(
+    searchParams.get("next"),
+    DEFAULT_AUTHENTICATED_REDIRECT
+  );
+  const fromLibrary = next.startsWith("/biblioteca");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,7 +70,7 @@ export function SignUpForm() {
         email: trimmedEmail,
         password,
         options: {
-          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(DEFAULT_AUTHENTICATED_REDIRECT)}`,
+          emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
           data: {
             name: trimmedName,
           },
@@ -85,7 +95,7 @@ export function SignUpForm() {
 
       // Conta criada e sessão imediata (confirmação de e-mail desligada).
       if (data.session) {
-        router.replace(DEFAULT_AUTHENTICATED_REDIRECT);
+        router.replace(next);
         router.refresh();
         return;
       }
@@ -99,12 +109,20 @@ export function SignUpForm() {
     }
   }
 
+  const loginHref = `/entrar?next=${encodeURIComponent(next)}`;
+
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
       {error && <p className="auth-alert" role="alert">{error}</p>}
       {success && (
         <p className="auth-success" role="status">
           {success}
+        </p>
+      )}
+
+      {fromLibrary && (
+        <p className="auth-purchase-hint" role="note">
+          Se você já realizou uma compra, cadastre o mesmo e-mail
         </p>
       )}
 
@@ -163,7 +181,8 @@ export function SignUpForm() {
       </button>
 
       <p className="auth-switch">
-        Já tem conta? <Link href="/entrar">Entrar</Link>
+        Já tem conta?{" "}
+        <Link href={loginHref}>Clique aqui</Link>
       </p>
     </form>
   );

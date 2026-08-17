@@ -339,6 +339,17 @@ img {
   background: var(--accent);
 }
 
+.btn-pay {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+
+.btn-pay:hover:not(:disabled) {
+  background: #15803d;
+  border-color: #15803d;
+}
+
 .btn-secondary {
   background: transparent;
   border-color: var(--line);
@@ -473,15 +484,42 @@ img {
   line-height: 1;
 }
 
-.product-media img {
+.product-media img,
+.product-media .product-media-primary,
+.product-media .product-media-hover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.45s ease;
 }
 
-.product-card:hover .product-media img {
+.product-media-primary {
+  position: relative;
+  z-index: 0;
+  transition: opacity 0.35s ease, transform 0.45s ease;
+}
+
+.product-media-hover {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.product-card:hover .product-media-primary {
   transform: scale(1.04);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .product-card:hover .product-media--has-hover .product-media-primary {
+    opacity: 0;
+    transform: none;
+  }
+
+  .product-card:hover .product-media--has-hover .product-media-hover {
+    opacity: 1;
+  }
 }
 
 .product-body {
@@ -1366,6 +1404,16 @@ img {
   text-align: center;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.auth-purchase-hint {
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--muted);
+  background: #f7f5f2;
+  border: 1px solid var(--line);
 }
 
 .auth-alert,

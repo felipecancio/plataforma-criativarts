@@ -35,6 +35,7 @@ type AsaasCheckout = {
   id?: string;
   status?: string;
   externalReference?: string | null;
+  customer?: string | null;
   customerData?: {
     email?: string | null;
     name?: string | null;
@@ -73,6 +74,22 @@ async function fetchPayment(paymentId: string): Promise<AsaasPayment | null> {
   return result.data;
 }
 
+async function fetchPaymentsByExternalReference(
+  externalReference: string
+): Promise<AsaasPayment[]> {
+  const result = await asaasFetch<{ data?: AsaasPayment[] }>(
+    `/payments?externalReference=${encodeURIComponent(externalReference)}&limit=20`
+  );
+  if (!result.ok) {
+    console.error(
+      "[asaas webhook] list payments by externalReference failed",
+      result.error
+    );
+    return [];
+  }
+  return Array.isArray(result.data.data) ? result.data.data : [];
+}
+
 async function fetchCustomerEmail(customerId: string): Promise<string | null> {
   const result = await asaasFetch<{ email?: string | null }>(
     `/customers/${customerId}`
@@ -80,6 +97,65 @@ async function fetchCustomerEmail(customerId: string): Promise<string | null> {
   if (!result.ok) return null;
   const email = result.data.email?.trim();
   return email || null;
+}
+
+/**
+ * Enriquece pagamento/e-mail a partir da API Asaas quando o webhook
+ * (ex.: CHECKOUT_PAID) não traz customerData.
+ */
+async function resolvePaymentContext(input: {
+  orderId: string;
+  payment: AsaasPayment | null;
+  checkout: AsaasCheckout | null;
+}): Promise<{
+  payment: AsaasPayment | null;
+  paymentId: string;
+  payerEmail: string | null;
+  amount: number | undefined;
+}> {
+  let payment = input.payment;
+  let payerEmail =
+    input.checkout?.customerData?.email?.trim() || null;
+
+  if (!payerEmail && input.checkout?.customer?.trim()) {
+    payerEmail = await fetchCustomerEmail(input.checkout.customer.trim());
+  }
+
+  if (payment?.id && (payment.value == null || !payment.customer)) {
+    payment = (await fetchPayment(String(payment.id))) ?? payment;
+  }
+
+  if (!payment?.id || payment.value == null || !payment.customer) {
+    const listed = await fetchPaymentsByExternalReference(input.orderId);
+    const preferred =
+      listed.find((p) =>
+        PAID_PAYMENT_STATUSES.has(String(p.status ?? "").toUpperCase())
+      ) ?? listed[0];
+    if (preferred) {
+      payment = preferred;
+    }
+  }
+
+  if (!payerEmail && payment?.customer) {
+    payerEmail = await fetchCustomerEmail(String(payment.customer));
+  }
+
+  let amount: number | undefined =
+    typeof payment?.value === "number" ? payment.value : undefined;
+  if (amount == null && input.checkout?.items?.length) {
+    amount = input.checkout.items.reduce((sum, item) => {
+      const value = Number(item.value ?? 0);
+      const qty = Number(item.quantity ?? 1);
+      return sum + value * qty;
+    }, 0);
+  }
+
+  const paymentId =
+    (typeof payment?.id === "string" && payment.id.trim()) ||
+    (typeof input.checkout?.id === "string" && input.checkout.id.trim()) ||
+    `asaas_${input.orderId}`;
+
+  return { payment, paymentId, payerEmail, amount };
 }
 
 /**
@@ -124,24 +200,19 @@ export async function handleAsaasWebhook(input: {
   const paymentRaw = asRecord(body?.payment) as AsaasPayment | null;
   const checkoutRaw = asRecord(body?.checkout) as AsaasCheckout | null;
 
-  let payment: AsaasPayment | null = paymentRaw;
-  if (paymentRaw?.id && (!paymentRaw.status || paymentRaw.value == null)) {
-    payment = (await fetchPayment(String(paymentRaw.id))) ?? paymentRaw;
-  }
-
   const orderIdCandidate =
-    (typeof payment?.externalReference === "string" &&
-      payment.externalReference.trim()) ||
+    (typeof paymentRaw?.externalReference === "string" &&
+      paymentRaw.externalReference.trim()) ||
     (typeof checkoutRaw?.externalReference === "string" &&
       checkoutRaw.externalReference.trim()) ||
     "";
 
   const checkoutId =
     typeof checkoutRaw?.id === "string" ? checkoutRaw.id.trim() : "";
-  const paymentId =
-    typeof payment?.id === "string" ? payment.id.trim() : checkoutId || "";
+  const paymentIdHint =
+    typeof paymentRaw?.id === "string" ? paymentRaw.id.trim() : "";
 
-  if (!orderIdCandidate && !checkoutId && !paymentId) {
+  if (!orderIdCandidate && !checkoutId && !paymentIdHint) {
     return {
       ok: true,
       ignored: true,
@@ -162,7 +233,7 @@ export async function handleAsaasWebhook(input: {
   } else if (checkoutId) {
     orderQuery = orderQuery.eq("preference_id", checkoutId);
   } else {
-    orderQuery = orderQuery.eq("payment_id", paymentId);
+    orderQuery = orderQuery.eq("payment_id", paymentIdHint);
   }
 
   const { data: orderRow, error: orderError } = await orderQuery.maybeSingle();
@@ -171,10 +242,19 @@ export async function handleAsaasWebhook(input: {
     return {
       ok: false,
       event,
-      paymentId: paymentId || undefined,
+      paymentId: paymentIdHint || undefined,
       message: "Pedido não encontrado para o webhook Asaas.",
     };
   }
+
+  const resolved = await resolvePaymentContext({
+    orderId: orderRow.id,
+    payment: paymentRaw,
+    checkout: checkoutRaw,
+  });
+
+  const payment = resolved.payment;
+  const paymentId = resolved.paymentId;
 
   const isPaidEvent =
     event === "CHECKOUT_PAID" ||
@@ -188,21 +268,12 @@ export async function handleAsaasWebhook(input: {
       ignored: true,
       event,
       orderId: orderRow.id,
-      paymentId: paymentId || undefined,
+      paymentId,
       message: `Pagamento ainda não confirmado (status=${payment?.status ?? "n/a"}).`,
     };
   }
 
-  let amount: number | undefined =
-    typeof payment?.value === "number" ? payment.value : undefined;
-  if (amount == null && checkoutRaw?.items?.length) {
-    amount = checkoutRaw.items.reduce((sum, item) => {
-      const value = Number(item.value ?? 0);
-      const qty = Number(item.quantity ?? 1);
-      return sum + value * qty;
-    }, 0);
-  }
-
+  const amount = resolved.amount;
   if (amount != null && !amountsMatch(Number(orderRow.total), amount)) {
     console.error("[asaas webhook] amount mismatch", {
       orderId: orderRow.id,
@@ -213,32 +284,24 @@ export async function handleAsaasWebhook(input: {
       ok: false,
       event,
       orderId: orderRow.id,
-      paymentId: paymentId || undefined,
+      paymentId,
       message: "Valor do pagamento não confere com o pedido.",
     };
   }
 
-  let payerEmail: string | null =
-    checkoutRaw?.customerData?.email?.trim() ||
-    orderRow.customer_email?.trim() ||
-    null;
-
-  if (!payerEmail && payment?.customer) {
-    payerEmail = await fetchCustomerEmail(String(payment.customer));
-  }
+  const payerEmail =
+    resolved.payerEmail || orderRow.customer_email?.trim() || null;
 
   let linkUserId: string | null = null;
   if (!orderRow.user_id && payerEmail) {
     linkUserId = await findUserIdByEmail(payerEmail);
   }
 
-  const finalizePaymentId = paymentId || `asaas_checkout_${checkoutId || orderRow.id}`;
-
   const { data: finalized, error: finalizeError } = await admin.rpc(
     "finalize_order_from_mercadopago",
     {
       p_order_id: orderRow.id,
-      p_payment_id: finalizePaymentId,
+      p_payment_id: paymentId,
       p_mp_status: "approved",
       p_mp_status_detail: event,
       p_customer_email: payerEmail,
@@ -252,7 +315,7 @@ export async function handleAsaasWebhook(input: {
       ok: false,
       event,
       orderId: orderRow.id,
-      paymentId: finalizePaymentId,
+      paymentId,
       message: finalizeError.message,
     };
   }
@@ -263,6 +326,7 @@ export async function handleAsaasWebhook(input: {
     .update({
       payment_provider: "asaas",
       preference_id: checkoutId || orderRow.preference_id,
+      ...(payerEmail ? { customer_email: payerEmail } : {}),
     })
     .eq("id", orderRow.id);
 
@@ -272,6 +336,17 @@ export async function handleAsaasWebhook(input: {
       : null) ??
     linkUserId ??
     orderRow.user_id;
+
+  // Reforço idempotente: se já há user, garante library mesmo se finalize antigo falhar parcialmente.
+  if (finalUserId) {
+    const { error: grantError } = await admin.rpc(
+      "grant_library_from_paid_order",
+      { p_order_id: orderRow.id }
+    );
+    if (grantError) {
+      console.error("[asaas webhook] grant_library failed:", grantError.message);
+    }
+  }
 
   const libraryGranted = Boolean(finalUserId);
 
@@ -295,7 +370,7 @@ export async function handleAsaasWebhook(input: {
     ok: true,
     event,
     orderId: orderRow.id,
-    paymentId: finalizePaymentId,
+    paymentId,
     libraryGranted,
     message: libraryGranted
       ? "Pagamento Asaas confirmado — pedido pago e biblioteca liberada."

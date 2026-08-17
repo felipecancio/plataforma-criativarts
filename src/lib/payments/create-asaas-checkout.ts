@@ -160,8 +160,6 @@ export async function createAsaasCheckout(
   let currency: string;
   let externalReference: string;
   let items: CreateAsaasCheckoutSuccess["items"];
-  let customerEmail: string | undefined;
-  let customerName: string | undefined;
   let isGuest = false;
 
   if (user) {
@@ -195,12 +193,6 @@ export async function createAsaasCheckout(
       unitPrice: product.price,
       quantity: 1,
     }));
-    customerEmail = user.email?.trim() || undefined;
-    customerName =
-      (typeof user.user_metadata?.name === "string" &&
-        user.user_metadata.name.trim()) ||
-      customerEmail?.split("@")[0] ||
-      undefined;
   } else {
     if (!hasSupabaseServiceRole()) {
       return {
@@ -261,12 +253,8 @@ export async function createAsaasCheckout(
     })),
   };
 
-  if (customerEmail) {
-    body.customerData = {
-      name: customerName || customerEmail.split("@")[0] || "Cliente",
-      email: customerEmail,
-    };
-  }
+  // Não enviar customerData parcial: o Asaas exige cpfCnpj nesse objeto.
+  // Sem customerData, o checkout hospedado coleta CPF/e-mail (guest e logado).
 
   const created = await asaasFetch<AsaasCheckoutResponse>("/checkouts", {
     method: "POST",

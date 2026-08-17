@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { SignUpForm } from "@/components/auth/SignUpForm";
 
 export const metadata: Metadata = {
@@ -13,7 +14,9 @@ export default function SignUpPage() {
         <h1>Criar conta</h1>
         <p>Cadastre-se para acessar a plataforma.</p>
       </header>
-      <SignUpForm />
+      <Suspense fallback={<p className="auth-loading">Carregando…</p>}>
+        <SignUpForm />
+      </Suspense>
     </section>
   );
 }

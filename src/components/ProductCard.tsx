@@ -12,19 +12,28 @@ export function ProductCard({
   product,
   badge,
   owned = false,
+  hidePrice = false,
 }: {
   product: Product;
   badge?: string;
   /** Quando true, usa o mesmo card da loja com CTA de download */
   owned?: boolean;
+  /** Oculta preços (ex.: na biblioteca) */
+  hidePrice?: boolean;
 }) {
   const { addItem, hasItem, openCart } = useCart();
   const inCart = hasItem(product.id);
   const displayBadge = owned ? badge ?? "Na biblioteca" : badge;
+  const showPrice = !hidePrice;
+  const hoverImage =
+    product.gallery.find((src) => src && src !== product.image) ?? null;
 
   return (
     <article className={`product-card${owned ? " product-card--owned" : ""}`}>
-      <Link href={`/produto/${product.slug}`} className="product-media">
+      <Link
+        href={`/produto/${product.slug}`}
+        className={`product-media${hoverImage ? " product-media--has-hover" : ""}`}
+      >
         {displayBadge && <span className="product-badge">{displayBadge}</span>}
         <Image
           src={product.image}
@@ -32,7 +41,19 @@ export function ProductCard({
           width={1000}
           height={1000}
           priority={false}
+          className="product-media-primary"
         />
+        {hoverImage && (
+          <Image
+            src={hoverImage}
+            alt=""
+            width={1000}
+            height={1000}
+            priority={false}
+            className="product-media-hover"
+            aria-hidden
+          />
+        )}
       </Link>
 
       <div className="product-body">
@@ -40,12 +61,14 @@ export function ProductCard({
           <h3>
             <Link href={`/produto/${product.slug}`}>{product.name}</Link>
           </h3>
-          <div className="product-price-block">
-            <span className="product-price-compare">
-              {formatPrice(product.compareAtPrice)}
-            </span>
-            <span className="product-price">{formatPrice(product.price)}</span>
-          </div>
+          {showPrice && (
+            <div className="product-price-block">
+              <span className="product-price-compare">
+                {formatPrice(product.compareAtPrice)}
+              </span>
+              <span className="product-price">{formatPrice(product.price)}</span>
+            </div>
+          )}
         </div>
 
         <ul className="product-meta">

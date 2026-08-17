@@ -263,7 +263,7 @@ export function CheckoutPageContent() {
 
   const headCopy =
     checkoutMode === "asaas"
-      ? "Finalize com Pix ou cartão pelo checkout Asaas."
+      ? null
       : checkoutMode === "pro"
         ? "Finalize com o Checkout Pro do Mercado Pago."
         : "Finalize com o checkout seguro do Mercado Pago.";
@@ -281,7 +281,7 @@ export function CheckoutPageContent() {
 
         <div className="checkout-page-head">
           <h1>Pagamento</h1>
-          <p>{headCopy}</p>
+          {headCopy ? <p>{headCopy}</p> : null}
         </div>
 
         <div className="checkout-layout">

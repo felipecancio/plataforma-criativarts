@@ -132,7 +132,8 @@ export function CartPageContent() {
               <strong>{formatPrice(subtotal)}</strong>
             </div>
             <p className="cart-summary-note">
-              Ao confirmar, você verá o checkout seguro do Mercado Pago.
+              Ao confirmar, você poderá concluir sua compra em um checkout
+              seguro.
             </p>
             <Link href="/checkout" className="btn btn-cart btn-block">
               Ir para o pagamento

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BibliotecaPage() {
-  const user = await requireUser("/biblioteca");
+  const user = await requireUser("/biblioteca", "/cadastro");
   const [profile, library] = await Promise.all([
     getProfileByUserId(user.id),
     getCurrentUserLibrary(),

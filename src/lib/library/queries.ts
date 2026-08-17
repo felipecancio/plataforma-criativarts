@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { mapUserLibraryRow } from "@/lib/orders/mappers";
 import { mapProductRow } from "@/lib/products/mappers";
+import { linkPaidGuestOrdersForCurrentUser } from "@/lib/orders/claim";
 import type { ProductRow, UserLibraryRow } from "@/types/database";
 import type {
   UserLibraryEntry,
@@ -45,6 +46,8 @@ export async function getCurrentUserLibrary(): Promise<UserLibraryProduct[]> {
 
   if (!user) return [];
 
+  // Guest paid com mesmo e-mail → vincula order + library antes do sync.
+  await linkPaidGuestOrdersForCurrentUser();
   await syncPaidOrdersIntoLibrary();
 
   const { data, error } = await supabase
