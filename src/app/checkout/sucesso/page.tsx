@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CheckoutPurchaseTracker } from "@/components/analytics/CheckoutPurchaseTracker";
 
 export const metadata: Metadata = {
   title: "Pagamento confirmado | Criativarts",
@@ -9,10 +10,12 @@ export const metadata: Metadata = {
 /**
  * Retorno do checkout hospedado (Asaas / Pro).
  * Não libera acesso aqui — confirmação vem do webhook; CTA leva à biblioteca.
+ * Purchase (Pixel) dispara no client via pending sessionStorage.
  */
 export default function CheckoutSucessoPage() {
   return (
     <div className="checkout-page">
+      <CheckoutPurchaseTracker />
       <div className="container checkout-return">
         <h1>Pagamento confirmado</h1>
         <p>

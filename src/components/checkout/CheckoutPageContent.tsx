@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import { trackPurchase } from "@/lib/analytics";
+import { ANALYTICS_CONTENT_TYPE, ANALYTICS_CURRENCY } from "@/lib/analytics/types";
 import { formatPrice } from "@/lib/format";
 import { getCheckoutMode, isHostedCheckoutMode } from "@/lib/payments/checkout-mode";
 import { CheckoutProPanel } from "@/components/checkout/CheckoutProPanel";
@@ -226,6 +228,25 @@ export function CheckoutPageContent() {
       !clearedRef.current
     ) {
       clearedRef.current = true;
+
+      if (session?.ok) {
+        trackPurchase({
+          products: session.items.map((item) => ({
+            product_id: item.productId,
+            product_name: item.name,
+            value: Number((item.unitPrice * item.quantity).toFixed(2)),
+            currency: session.currency || ANALYTICS_CURRENCY,
+            quantity: item.quantity,
+            content_type: ANALYTICS_CONTENT_TYPE,
+          })),
+          value: Number(paymentResult.amount.toFixed(2)),
+          currency: session.currency || ANALYTICS_CURRENCY,
+          content_type: ANALYTICS_CONTENT_TYPE,
+          num_items: session.items.reduce((sum, item) => sum + item.quantity, 0),
+          order_id: paymentResult.orderId,
+        });
+      }
+
       clearCart();
       try {
         const keys = Object.keys(sessionStorage).filter((key) =>
@@ -236,7 +257,7 @@ export function CheckoutPageContent() {
         // ignore
       }
     }
-  }, [paymentResult, clearCart]);
+  }, [paymentResult, clearCart, session]);
 
   function handleRetry() {
     setPaymentResult(null);

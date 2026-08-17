@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import { stashPendingPurchase } from "@/lib/analytics/pending-purchase";
 import { createCheckoutPreferenceRequest } from "@/lib/payments/client";
 import { formatPrice } from "@/lib/format";
 
@@ -46,6 +47,13 @@ export function CheckoutProPanel({
       } catch {
         // ignore
       }
+
+      stashPendingPurchase({
+        orderId: result.orderId,
+        amount: result.amount,
+        currency: result.currency,
+        items: result.items,
+      });
 
       clearCart();
       window.location.assign(result.initPoint);
