@@ -81,7 +81,7 @@ export function CheckoutAsaasPanel({
       </button>
 
       <p className="checkout-summary-note">
-        Nenhum de seus dados fica armazenado em nosso sitema. Apenas recebemos
+        Nenhum de seus dados fica armazenado em nosso sistema. Apenas recebemos
         as confirmações de compra. Suas informações estão 100% protegidas.
       </p>
 

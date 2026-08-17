@@ -374,12 +374,11 @@ export function CheckoutPageContent() {
               </strong>
             </div>
             <p className="checkout-summary-note">
-              Valores confirmados no servidor
               {checkoutMode === "asaas"
-                ? " ao criar o checkout Asaas."
+                ? "O valor será confirmado novamente no checkout da etapa seguinte."
                 : checkoutMode === "pro"
-                  ? " ao criar a Preference."
-                  : ". Pagamentos via Mercado Pago Checkout Bricks."}
+                  ? "Valores confirmados no servidor ao criar a Preference."
+                  : "Valores confirmados no servidor. Pagamentos via Mercado Pago Checkout Bricks."}
             </p>
             {!isHosted &&
               !(paymentResult?.ok && paymentResult.status === "approved") && (
