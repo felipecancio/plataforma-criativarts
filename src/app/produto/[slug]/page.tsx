@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { productDescriptionSummary } from "@/data/products";
+import { getProductDescriptionSummary } from "@/data/products";
 import {
   getAllProductSlugs,
   getProductBySlug,
@@ -29,7 +29,7 @@ export async function generateMetadata({
 
   return {
     title: `${product.name} | Criativarts`,
-    description: productDescriptionSummary,
+    description: getProductDescriptionSummary(slug),
   };
 }
 

@@ -11,8 +11,7 @@ export { getDiscountPercent, getSavings } from "@/lib/products/mappers";
 import type { ProductDescriptionContent } from "@/types/product";
 
 /**
- * Descrição padrão mesclada — linguagem direta, técnica e objetiva.
- * Usada em todas as páginas de produto.
+ * Descrição padrão (coleções Halftone).
  */
 export const productDescription: ProductDescriptionContent = {
   headline: "Coleção de Estampas Halftone",
@@ -36,5 +35,60 @@ export const productDescription: ProductDescriptionContent = {
   ],
 };
 
+/**
+ * Copy específica — Coleção Animes Lendas (editáveis).
+ */
+export const animesLendasDescription: ProductDescriptionContent = {
+  headline: "Coleção Animes Lendas — EDITÁVEIS",
+  intro:
+    "Designs Graphic Tee e Streetwear com arquivos editáveis e PNGs prontos para aplicação. Feita para quem precisa de artes comerciais com liberdade total de personalização.",
+  receiveTitle: "O que você vai receber",
+  receiveItems: [
+    { text: "120 artes exclusivas no estilo Graphic Tee e Streetwear" },
+    {
+      text: "Arquivos editáveis em EPS e AI, permitindo personalizar cores, tamanhos e outros elementos",
+    },
+    {
+      text: "Versões em PNG de alta qualidade, prontas para impressão e aplicação",
+    },
+    {
+      text: "Designs profissionais com visual moderno, urbano e marcante",
+    },
+    {
+      text: "Entrega imediata por e-mail após a confirmação da compra",
+      highlight: true,
+    },
+    { text: "Acesso vitalício à coleção" },
+  ],
+  whyTitle: "Por que escolher esta coleção?",
+  whyItems: [
+    "Estilo em alta: designs Graphic Tee com identidade forte, moderna e comercial.",
+    "Total liberdade para personalizar: edite cores, dimensões e elementos.",
+    "Economize tempo: tenha artes profissionais prontas para usar ou adaptar, sem precisar começar do zero.",
+    "Mais valor em seus produtos: produza estampas impactantes, capazes de chamar a atenção dos clientes.",
+    "Compatível com diferentes métodos: utilize as artes em projetos de DTF, DTG, serigrafia, sublimação e outras técnicas.",
+    "Qualidade profissional: arquivos preparados para oferecer excelente definição e ótimo acabamento na impressão.",
+  ],
+};
+
+const descriptionsBySlug: Record<string, ProductDescriptionContent> = {
+  animeslendas: animesLendasDescription,
+};
+
+/** Retorna a copy da página do produto (override por slug quando existir). */
+export function getProductDescription(
+  slug: string
+): ProductDescriptionContent {
+  return descriptionsBySlug[slug] ?? productDescription;
+}
+
 export const productDescriptionSummary =
   "Coleção digital Halftone com artes em PNG de alta resolução, prontas para impressão e entrega imediata após a compra.";
+
+export const animesLendasDescriptionSummary =
+  "Coleção Animes Lendas com 120 artes Graphic Tee editáveis (EPS/AI) e PNG prontos para impressão, com entrega imediata após a compra.";
+
+export function getProductDescriptionSummary(slug: string): string {
+  if (slug === "animeslendas") return animesLendasDescriptionSummary;
+  return productDescriptionSummary;
+}

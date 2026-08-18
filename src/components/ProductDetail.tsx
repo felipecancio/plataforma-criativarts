@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type TouchEvent } from "react";
 import {
   getDiscountPercent,
   getSavings,
-  productDescription,
+  getProductDescription,
 } from "@/data/products";
 import type { Product } from "@/types/product";
 import { useCart } from "@/context/CartContext";
@@ -30,7 +30,7 @@ export function ProductDetail({
   const inCart = hasItem(product.id);
   const discount = getDiscountPercent(product);
   const savings = getSavings(product);
-  const copy = productDescription;
+  const copy = getProductDescription(product.slug);
   const activeImage = gallery[activeIndex] ?? product.image;
   const canNavigate = gallery.length > 1;
 
