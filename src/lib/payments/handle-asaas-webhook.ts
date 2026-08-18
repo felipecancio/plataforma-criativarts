@@ -5,6 +5,7 @@ import {
   hasAsaasWebhookToken,
 } from "@/lib/asaas/env";
 import { findUserIdByEmail } from "@/lib/orders/claim";
+import { sendCheckoutExpiredEmailIfNeeded } from "@/lib/resend/send-checkout-expired-email";
 import { sendOrderAccessEmailIfNeeded } from "@/lib/resend/send-order-access-email";
 import { sendOrderClaimEmailIfNeeded } from "@/lib/resend/send-order-claim-email";
 import { createAdminClient, hasSupabaseServiceRole } from "@/lib/supabase/admin";
@@ -26,6 +27,7 @@ type AsaasPayment = {
   netValue?: number;
   externalReference?: string | null;
   customer?: string | null;
+  checkoutSession?: string | null;
   billingType?: string | null;
   paymentDate?: string | null;
   clientPaymentDate?: string | null;
@@ -53,6 +55,11 @@ const PAID_EVENTS = new Set([
   "CHECKOUT_PAID",
   "PAYMENT_CONFIRMED",
   "PAYMENT_RECEIVED",
+]);
+
+const CHECKOUT_ABANDONED_EVENTS = new Set([
+  "CHECKOUT_EXPIRED",
+  "CHECKOUT_CANCELED",
 ]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -90,6 +97,39 @@ async function fetchPaymentsByExternalReference(
   return Array.isArray(result.data.data) ? result.data.data : [];
 }
 
+/**
+ * Cobranças geradas por um Checkout Session.
+ * Importante: no Asaas, o payment muitas vezes NÃO herda externalReference do checkout.
+ */
+async function fetchPaymentsByCheckoutSession(
+  checkoutSessionId: string
+): Promise<AsaasPayment[]> {
+  const result = await asaasFetch<{ data?: AsaasPayment[] }>(
+    `/payments?checkoutSession=${encodeURIComponent(checkoutSessionId)}&limit=20`
+  );
+  if (!result.ok) {
+    console.error(
+      "[asaas webhook] list payments by checkoutSession failed",
+      result.error
+    );
+    return [];
+  }
+  return Array.isArray(result.data.data) ? result.data.data : [];
+}
+
+function pickPaidPayment(payments: AsaasPayment[]): AsaasPayment | null {
+  if (payments.length === 0) return null;
+  return (
+    payments.find((p) =>
+      PAID_PAYMENT_STATUSES.has(String(p.status ?? "").toUpperCase())
+    ) ?? payments[0]
+  );
+}
+
+function isAsaasPaymentId(id: string): boolean {
+  return id.startsWith("pay_");
+}
+
 async function fetchCustomerEmail(customerId: string): Promise<string | null> {
   const result = await asaasFetch<{ email?: string | null }>(
     `/customers/${customerId}`
@@ -107,6 +147,7 @@ async function resolvePaymentContext(input: {
   orderId: string;
   payment: AsaasPayment | null;
   checkout: AsaasCheckout | null;
+  checkoutSessionId?: string | null;
 }): Promise<{
   payment: AsaasPayment | null;
   paymentId: string;
@@ -121,19 +162,36 @@ async function resolvePaymentContext(input: {
     payerEmail = await fetchCustomerEmail(input.checkout.customer.trim());
   }
 
-  if (payment?.id && (payment.value == null || !payment.customer)) {
-    payment = (await fetchPayment(String(payment.id))) ?? payment;
+  const checkoutSessionId =
+    input.checkoutSessionId?.trim() ||
+    input.checkout?.id?.trim() ||
+    (payment?.checkoutSession ? String(payment.checkoutSession).trim() : "") ||
+    (payment?.id && !isAsaasPaymentId(String(payment.id))
+      ? String(payment.id).trim()
+      : "");
+
+  // Se o "payment.id" do webhook for o UUID do checkout, não chamar /payments/{uuid}.
+  if (payment?.id && isAsaasPaymentId(String(payment.id))) {
+    if (payment.value == null || !payment.customer) {
+      payment = (await fetchPayment(String(payment.id))) ?? payment;
+    }
+  } else if (payment?.id && !isAsaasPaymentId(String(payment.id))) {
+    payment = null;
   }
 
   if (!payment?.id || payment.value == null || !payment.customer) {
     const listed = await fetchPaymentsByExternalReference(input.orderId);
-    const preferred =
-      listed.find((p) =>
-        PAID_PAYMENT_STATUSES.has(String(p.status ?? "").toUpperCase())
-      ) ?? listed[0];
-    if (preferred) {
-      payment = preferred;
-    }
+    const preferred = pickPaidPayment(listed);
+    if (preferred) payment = preferred;
+  }
+
+  if (
+    (!payment?.id || payment.value == null || !payment.customer) &&
+    checkoutSessionId
+  ) {
+    const listed = await fetchPaymentsByCheckoutSession(checkoutSessionId);
+    const preferred = pickPaidPayment(listed);
+    if (preferred) payment = preferred;
   }
 
   if (!payerEmail && payment?.customer) {
@@ -151,8 +209,10 @@ async function resolvePaymentContext(input: {
   }
 
   const paymentId =
-    (typeof payment?.id === "string" && payment.id.trim()) ||
-    (typeof input.checkout?.id === "string" && input.checkout.id.trim()) ||
+    (typeof payment?.id === "string" &&
+      isAsaasPaymentId(payment.id.trim()) &&
+      payment.id.trim()) ||
+    (checkoutSessionId ? `checkout_${checkoutSessionId}` : "") ||
     `asaas_${input.orderId}`;
 
   return { payment, paymentId, payerEmail, amount };
@@ -186,15 +246,6 @@ export async function handleAsaasWebhook(input: {
 
   if (!event) {
     return { ok: true, ignored: true, message: "Evento Asaas sem campo event." };
-  }
-
-  if (!PAID_EVENTS.has(event)) {
-    return {
-      ok: true,
-      ignored: true,
-      event,
-      message: `Evento ${event} ignorado (não confirma pagamento).`,
-    };
   }
 
   const paymentRaw = asRecord(body?.payment) as AsaasPayment | null;
@@ -247,10 +298,54 @@ export async function handleAsaasWebhook(input: {
     };
   }
 
+  if (CHECKOUT_ABANDONED_EVENTS.has(event)) {
+    const hintEmail =
+      checkoutRaw?.customerData?.email?.trim() ||
+      orderRow.customer_email?.trim() ||
+      null;
+    const hintName = checkoutRaw?.customerData?.name?.trim() || null;
+
+    try {
+      const emailResult = await sendCheckoutExpiredEmailIfNeeded(orderRow.id, {
+        customerEmailHint: hintEmail,
+        customerNameHint: hintName,
+      });
+      if (!emailResult.ok && !emailResult.skipped) {
+        console.error(
+          "[asaas webhook] checkout expired email failed:",
+          emailResult.message
+        );
+      }
+    } catch (emailError) {
+      console.error(
+        "[asaas webhook] checkout expired email unexpected:",
+        emailError
+      );
+    }
+
+    return {
+      ok: true,
+      event,
+      orderId: orderRow.id,
+      message: `Checkout Asaas ${event === "CHECKOUT_EXPIRED" ? "expirado" : "cancelado"} — e-mail de recuperação processado.`,
+    };
+  }
+
+  if (!PAID_EVENTS.has(event)) {
+    return {
+      ok: true,
+      ignored: true,
+      event,
+      orderId: orderRow.id,
+      message: `Evento ${event} ignorado (não confirma pagamento).`,
+    };
+  }
+
   const resolved = await resolvePaymentContext({
     orderId: orderRow.id,
     payment: paymentRaw,
     checkout: checkoutRaw,
+    checkoutSessionId: checkoutId || orderRow.preference_id,
   });
 
   const payment = resolved.payment;
