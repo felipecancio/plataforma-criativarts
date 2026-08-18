@@ -20,7 +20,7 @@ export const productDescription: ProductDescriptionContent = {
     "Artes com textura em retícula, alto contraste e acabamento premium. Prontas para marcas e estamparias que precisam de impacto visual sem perder tempo criando do zero.",
   receiveTitle: "O que você vai receber",
   receiveItems: [
-    { text: "Designs em PNG de alta qualidade" },
+    { text: "Designs em PNG de alta qualidade (tamanhos A4, A3 e A2)" },
     { text: "Artes prontas para impressão e personalização" },
     { text: "{{quantity}} artes na coleção, com estilo Halftone consistente" },
     { text: "Entrega imediata no e-mail após a compra", highlight: true },
