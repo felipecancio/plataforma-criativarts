@@ -71,8 +71,41 @@ export const animesLendasDescription: ProductDescriptionContent = {
   ],
 };
 
+/**
+ * Copy específica — Coleção Teddy Bear (PNG alta resolução).
+ */
+export const teddyBearDescription: ProductDescriptionContent = {
+  headline: "Coleção Teddy Bear",
+  intro:
+    "Designs Graphic Tee Streetwear com arquivos PNGs em alta resolução prontos para aplicação. Feita para quem precisa de artes profissionais e que se destaquem.",
+  receiveTitle: "O que você vai receber",
+  receiveItems: [
+    { text: "100 artes exclusivas no estilo Graphic Tee Streetwear" },
+    {
+      text: "Versão em PNG de alta qualidade, prontas para impressão e aplicação",
+    },
+    {
+      text: "Designs profissionais com visual moderno, urbano e marcante",
+    },
+    {
+      text: "Entrega imediata por e-mail após a confirmação da compra",
+      highlight: true,
+    },
+    { text: "Acesso vitalício à coleção" },
+  ],
+  whyTitle: "Por que escolher esta coleção?",
+  whyItems: [
+    "Estilo em alta: designs Graphic Tee com identidade forte, moderna e comercial.",
+    "Economize tempo: tenha artes profissionais prontas para usar ou adaptar, sem precisar começar do zero.",
+    "Mais valor em seus produtos: produza estampas impactantes, capazes de chamar a atenção dos clientes.",
+    "Compatível com diferentes métodos: utilize as artes em projetos de DTF, DTG, serigrafia, sublimação e outras técnicas.",
+    "Qualidade profissional: arquivos preparados para oferecer excelente definição e ótimo acabamento na impressão.",
+  ],
+};
+
 const descriptionsBySlug: Record<string, ProductDescriptionContent> = {
   animeslendas: animesLendasDescription,
+  teddybear: teddyBearDescription,
 };
 
 /** Retorna a copy da página do produto (override por slug quando existir). */
@@ -88,7 +121,11 @@ export const productDescriptionSummary =
 export const animesLendasDescriptionSummary =
   "Coleção Animes Lendas com 120 artes Graphic Tee editáveis (EPS/AI) e PNG prontos para impressão, com entrega imediata após a compra.";
 
+export const teddyBearDescriptionSummary =
+  "Coleção Teddy Bear com designs Graphic Tee Streetwear em PNG de alta resolução, prontos para aplicação, com entrega imediata após a compra.";
+
 export function getProductDescriptionSummary(slug: string): string {
   if (slug === "animeslendas") return animesLendasDescriptionSummary;
+  if (slug === "teddybear") return teddyBearDescriptionSummary;
   return productDescriptionSummary;
 }

@@ -6,6 +6,24 @@ import type { Product } from "@/types/product";
  */
 export const fallbackProducts: Product[] = [
   {
+    id: "10",
+    name: "Coleção Teddy Bear - PNG",
+    slug: "teddybear",
+    quantity: 100,
+    style: "Graphic Tee",
+    price: 19.9,
+    compareAtPrice: 24.9,
+    soldCount: 42,
+    image: "/products/teddybear.webp",
+    gallery: [
+      "/products/teddybear.webp",
+      "/products/teddybear-2.webp",
+      "/products/teddybear-3.webp",
+    ],
+    storageProvider: "r2",
+    storageKey: "TEDDY BEAR/TEDDY BEAR 100.rar",
+  },
+  {
     id: "1",
     name: "Coleção Animes - HALFTONE",
     slug: "animes",
