@@ -222,6 +222,20 @@ export async function handleMercadoPagoWebhook(input: {
     } catch (emailError) {
       console.error("[webhook] post-paid email unexpected error:", emailError);
     }
+
+    try {
+      const { sendMetaCapiPurchaseIfNeeded } = await import(
+        "@/lib/analytics/send-meta-capi-purchase"
+      );
+      const capiResult = await sendMetaCapiPurchaseIfNeeded(orderId, {
+        customerEmailHint: payerEmail,
+      });
+      if (!capiResult.ok && !capiResult.skipped) {
+        console.error("[webhook] meta CAPI failed:", capiResult.message);
+      }
+    } catch (capiError) {
+      console.error("[webhook] meta CAPI unexpected:", capiError);
+    }
   }
 
   return {

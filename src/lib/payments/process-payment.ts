@@ -247,6 +247,18 @@ async function recordPaymentOnOrder(
   } catch (emailError) {
     console.error("[payments] access email unexpected error:", emailError);
   }
+
+  try {
+    const { sendMetaCapiPurchaseIfNeeded } = await import(
+      "@/lib/analytics/send-meta-capi-purchase"
+    );
+    const capiResult = await sendMetaCapiPurchaseIfNeeded(orderId);
+    if (!capiResult.ok && !capiResult.skipped) {
+      console.error("[payments] meta CAPI failed:", capiResult.message);
+    }
+  } catch (capiError) {
+    console.error("[payments] meta CAPI unexpected:", capiError);
+  }
 }
 
 /**

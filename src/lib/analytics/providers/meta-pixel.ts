@@ -84,7 +84,7 @@ export const metaPixelProvider: AnalyticsProvider = {
 
   purchase(payload: AnalyticsPurchasePayload) {
     if (!getPixelId() || !canTrack()) return;
-    window.fbq?.("track", "Purchase", {
+    const eventData = {
       content_ids: payload.products.map((item) => item.product_id),
       content_type: payload.content_type,
       value: payload.value,
@@ -95,6 +95,14 @@ export const metaPixelProvider: AnalyticsProvider = {
         quantity: item.quantity,
       })),
       ...(payload.order_id ? { order_id: payload.order_id } : {}),
-    });
+    };
+    // eventID = order_id deduplica com Meta CAPI no webhook (mesmo event_id).
+    if (payload.order_id) {
+      window.fbq?.("track", "Purchase", eventData, {
+        eventID: payload.order_id,
+      });
+      return;
+    }
+    window.fbq?.("track", "Purchase", eventData);
   },
 };

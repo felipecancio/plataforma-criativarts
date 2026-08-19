@@ -6,29 +6,20 @@ import type {
 } from "@/lib/analytics/types";
 
 /**
- * Meta Conversions API (server-side) stub.
- * Replace the body with authenticated POSTs to Graph API when ready.
+ * Meta Conversions API — provider browser fica vazio de propósito
+ * (token secreto só no servidor). Purchase real: sendMetaCapiPurchaseIfNeeded
+ * chamado nos webhooks / pós-pagamento.
  */
 export const metaCapiProvider: AnalyticsProvider = {
   name: "meta-capi",
 
-  pageView() {
-    // TODO: POST /api/analytics/meta event_name=PageView
-  },
+  pageView() {},
 
-  viewContent(_payload: AnalyticsProductPayload) {
-    // TODO: POST /api/analytics/meta event_name=ViewContent
-  },
+  viewContent(_payload: AnalyticsProductPayload) {},
 
-  addToCart(_payload: AnalyticsProductPayload) {
-    // TODO: POST /api/analytics/meta event_name=AddToCart
-  },
+  addToCart(_payload: AnalyticsProductPayload) {},
 
-  initiateCheckout(_payload: AnalyticsCartPayload) {
-    // TODO: POST /api/analytics/meta event_name=InitiateCheckout
-  },
+  initiateCheckout(_payload: AnalyticsCartPayload) {},
 
-  purchase(_payload: AnalyticsPurchasePayload) {
-    // TODO: POST /api/analytics/meta event_name=Purchase
-  },
+  purchase(_payload: AnalyticsPurchasePayload) {},
 };

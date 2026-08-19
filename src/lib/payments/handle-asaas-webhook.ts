@@ -461,6 +461,22 @@ export async function handleAsaasWebhook(input: {
     console.error("[asaas webhook] post-paid email unexpected:", emailError);
   }
 
+  // Purchase Meta CAPI (servidor) — cobre Pix sem retorno ao /checkout/sucesso.
+  // Não bloqueia o webhook se a Meta falhar.
+  try {
+    const { sendMetaCapiPurchaseIfNeeded } = await import(
+      "@/lib/analytics/send-meta-capi-purchase"
+    );
+    const capiResult = await sendMetaCapiPurchaseIfNeeded(orderRow.id, {
+      customerEmailHint: payerEmail,
+    });
+    if (!capiResult.ok && !capiResult.skipped) {
+      console.error("[asaas webhook] meta CAPI failed:", capiResult.message);
+    }
+  } catch (capiError) {
+    console.error("[asaas webhook] meta CAPI unexpected:", capiError);
+  }
+
   return {
     ok: true,
     event,
