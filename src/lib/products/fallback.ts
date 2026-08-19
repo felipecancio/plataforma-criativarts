@@ -6,6 +6,24 @@ import type { Product } from "@/types/product";
  */
 export const fallbackProducts: Product[] = [
   {
+    id: "11",
+    name: "Coleção Japanese Samurai - PNG",
+    slug: "samurai",
+    quantity: 104,
+    style: "Graphic Tee",
+    price: 19.9,
+    compareAtPrice: 24.9,
+    soldCount: 29,
+    image: "/products/samurai.webp",
+    gallery: [
+      "/products/samurai.webp",
+      "/products/samurai-2.webp",
+      "/products/samurai-3.webp",
+    ],
+    storageProvider: "r2",
+    storageKey: "JAPANESE SAMURAIS/SAMURAIS 104.rar",
+  },
+  {
     id: "10",
     name: "Coleção Teddy Bear - PNG",
     slug: "teddybear",
